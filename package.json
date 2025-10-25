@@ -1,0 +1,29 @@
+{
+  "name": "youtube-video-auto-play",
+  "version": "1.0.0",
+  "description": "A React-based web application that allows users to automatically play videos from any YouTube channel",
+  "main": "index.js",
+  "scripts": {
+    "dev": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm start",
+    "install-deps": "cd frontend && npm install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/srujan5570/youtube-video-play-auto.git"
+  },
+  "keywords": [
+    "youtube",
+    "auto-play",
+    "react",
+    "video-player",
+    "youtube-api"
+  ],
+  "author": "srujan5570",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/srujan5570/youtube-video-play-auto/issues"
+  },
+  "homepage": "https://github.com/srujan5570/youtube-video-play-auto#readme"
+}
