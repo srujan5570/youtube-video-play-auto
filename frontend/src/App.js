@@ -9,7 +9,6 @@ import VideoPlayer from './components/VideoPlayer';
 function App() {
   const [apiKey, setApiKey] = useState('');
   const [apiKeySubmitted, setApiKeySubmitted] = useState(false);
-  const [channelId, setChannelId] = useState('');
   const [videos, setVideos] = useState([]);
   const [filteredVideos, setFilteredVideos] = useState([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
