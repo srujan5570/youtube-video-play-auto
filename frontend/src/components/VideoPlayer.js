@@ -37,8 +37,12 @@ const VideoPlayer = ({ videoId, onEnd, onReady }) => {
     playerRef.current = event.target;
     
     if (session) {
-      // Simulate realistic user behavior
-      SessionManager.simulateUserBehavior(event.target, session);
+      // Simulate realistic user behavior with error handling
+      try {
+        SessionManager.simulateUserBehavior(event.target, session);
+      } catch (error) {
+        console.log('User behavior simulation failed:', error);
+      }
       
       // Set viewport and device info if possible
       try {
@@ -47,7 +51,11 @@ const VideoPlayer = ({ videoId, onEnd, onReady }) => {
         const deviceQuality = qualities[Math.floor(Math.random() * qualities.length)];
         
         setTimeout(() => {
-          event.target.setPlaybackQuality(deviceQuality);
+          try {
+            event.target.setPlaybackQuality(deviceQuality);
+          } catch (qualityError) {
+            console.log('Quality setting failed:', qualityError);
+          }
         }, 500);
         
       } catch (error) {
@@ -56,7 +64,11 @@ const VideoPlayer = ({ videoId, onEnd, onReady }) => {
     }
 
     if (onReady) {
-      onReady(event);
+      try {
+        onReady(event);
+      } catch (error) {
+        console.log('onReady callback failed:', error);
+      }
     }
   };
 
@@ -130,7 +142,23 @@ const VideoPlayer = ({ videoId, onEnd, onReady }) => {
         onPlay={handlePlay}
         onPause={(event) => console.log('Video paused - Session:', session.id)}
         onStateChange={handleStateChange}
-        onError={(event) => console.log('Player error:', event.data, 'Session:', session.id)}
+        onError={(event) => {
+          console.log('Player error:', event.data, 'Session:', session.id);
+          // Handle specific YouTube player errors gracefully
+          try {
+            const errorCodes = {
+              2: 'Invalid video ID',
+              5: 'HTML5 player error',
+              100: 'Video not found or private',
+              101: 'Video not allowed in embedded players',
+              150: 'Video not allowed in embedded players'
+            };
+            const errorMessage = errorCodes[event.data] || `Unknown error: ${event.data}`;
+            console.warn('YouTube Player Error:', errorMessage);
+          } catch (e) {
+            console.log('Error handling failed:', e);
+          }
+        }}
       />
       
       {/* Additional tracking iframes to simulate multiple device views */}

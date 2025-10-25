@@ -24,7 +24,7 @@ function App() {
     const fingerprint = FingerprintingManager.initializeFingerprint();
     
     // Set up user agent rotation for the entire session
-    const userAgent = SessionManager.generateUserAgent();
+    const userAgent = SessionManager.getRandomUserAgent();
     
     // Apply user agent to the document if possible
     try {
@@ -33,7 +33,7 @@ function App() {
       document.documentElement.setAttribute('data-user-agent', userAgent);
       
       // Set viewport meta tag based on simulated device
-      const viewport = SessionManager.generateViewportSize();
+      const viewport = SessionManager.getRandomViewport();
       let viewportMeta = document.querySelector('meta[name="viewport"]');
       if (!viewportMeta) {
         viewportMeta = document.createElement('meta');

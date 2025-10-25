@@ -1,4 +1,5 @@
 // Session management utilities for YouTube view optimization
+import FingerprintingManager from './fingerprinting.js';
 
 class SessionManager {
   constructor() {
@@ -26,7 +27,7 @@ class SessionManager {
     const userAgent = this.getRandomUserAgent();
     
     // Generate browser fingerprint for this session
-    const fingerprint = this.generateFingerprint();
+    const fingerprint = FingerprintingManager.generateFingerprint();
     
     const session = {
       id: `${timestamp}_${randomId}`,
@@ -46,6 +47,9 @@ class SessionManager {
 
     this.currentSession = session;
     this.sessionHistory.push(session);
+    
+    // Apply the fingerprint to the browser environment
+    FingerprintingManager.applyFingerprint(fingerprint);
     
     // Keep only last 100 sessions to prevent memory issues
     if (this.sessionHistory.length > 100) {
@@ -151,8 +155,8 @@ class SessionManager {
       // Random quality preference
       quality: ['small', 'medium', 'large', 'hd720', 'hd1080'][Math.floor(Math.random() * 5)],
       
-      // Randomize UI elements
-      controls: Math.random() > 0.3 ? 1 : 0,
+      // Randomize UI elements (but always keep controls enabled for user experience)
+      controls: 1, // Always show controls for better user experience
       showinfo: Math.random() > 0.5 ? 1 : 0,
       modestbranding: Math.random() > 0.5 ? 1 : 0,
       
@@ -179,13 +183,21 @@ class SessionManager {
 
   // Simulate realistic user behavior
   simulateUserBehavior(player, session) {
+    // Add safety check for player object
+    if (!player || typeof player !== 'object') {
+      console.log('Invalid player object provided to simulateUserBehavior');
+      return;
+    }
+
     const behaviors = [
       // Random seek within first 10 seconds
       () => {
         setTimeout(() => {
           const seekTime = Math.random() * 10;
           try {
-            player.seekTo(seekTime, true);
+            if (player && typeof player.seekTo === 'function') {
+              player.seekTo(seekTime, true);
+            }
           } catch (e) {
             console.log('Seek failed:', e);
           }
@@ -198,7 +210,9 @@ class SessionManager {
           const qualities = ['small', 'medium', 'large', 'hd720', 'hd1080'];
           const quality = qualities[Math.floor(Math.random() * qualities.length)];
           try {
-            player.setPlaybackQuality(quality);
+            if (player && typeof player.setPlaybackQuality === 'function') {
+              player.setPlaybackQuality(quality);
+            }
           } catch (e) {
             console.log('Quality change failed:', e);
           }
@@ -210,7 +224,9 @@ class SessionManager {
         setTimeout(() => {
           const volume = Math.floor(Math.random() * 30) + 70; // 70-100
           try {
-            player.setVolume(volume);
+            if (player && typeof player.setVolume === 'function') {
+              player.setVolume(volume);
+            }
           } catch (e) {
             console.log('Volume change failed:', e);
           }
@@ -218,10 +234,14 @@ class SessionManager {
       }
     ];
 
-    // Execute random behaviors
+    // Execute random behaviors with additional safety checks
     behaviors.forEach(behavior => {
       if (Math.random() > 0.5) {
-        behavior();
+        try {
+          behavior();
+        } catch (e) {
+          console.log('Behavior execution failed:', e);
+        }
       }
     });
   }
@@ -238,4 +258,5 @@ class SessionManager {
 }
 
 // Export singleton instance
-export default new SessionManager();
+const sessionManager = new SessionManager();
+export default sessionManager;
