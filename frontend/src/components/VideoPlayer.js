@@ -1,187 +1,226 @@
 import React, { useEffect, useState, useRef } from 'react';
 import YouTube from 'react-youtube';
-import SessionManager from '../utils/sessionManager';
+import sessionManager from '../utils/sessionManager';
 
 const VideoPlayer = ({ videoId, onEnd, onReady }) => {
-  const [session, setSession] = useState(null);
+  const [sessionData, setSessionData] = useState(null);
   const [playerKey, setPlayerKey] = useState(0);
   const playerRef = useRef(null);
+  const viewStartTime = useRef(null);
 
-  // Generate new session on each video change or page reload
+  // Create new session for each video
   useEffect(() => {
-    const newSession = SessionManager.generateSession();
-    setSession(newSession);
-    setPlayerKey(prev => prev + 1); // Force complete player recreation
-    
-    // Log session for debugging
-    console.log('New session generated:', newSession.id, 'Device:', newSession.deviceId);
+    const newSession = sessionManager.createVideoSession(videoId);
+    setSessionData(newSession);
+    setPlayerKey(prev => prev + 1); // Force player re-render with new session
+    viewStartTime.current = Date.now();
+
+    // Simulate page reload behavior - clear any existing YouTube cookies/cache
+    if (window.localStorage) {
+      // Clear YouTube-related localStorage items
+      Object.keys(window.localStorage).forEach(key => {
+        if (key.includes('youtube') || key.includes('yt')) {
+          window.localStorage.removeItem(key);
+        }
+      });
+    }
+
+    return () => {
+      // Update final view duration when component unmounts or video changes
+      if (viewStartTime.current && newSession) {
+        const duration = (Date.now() - viewStartTime.current) / 1000;
+        sessionManager.updateViewDuration(newSession.sessionId, duration);
+      }
+    };
   }, [videoId]);
 
-  // Generate optimized player options
-  const getPlayerOptions = () => {
-    if (!session) return { height: '500', width: '100%', playerVars: { autoplay: 1 } };
+  // Generate optimized player parameters for view counting
+  const generatePlayerVars = () => {
+    if (!sessionData) return { autoplay: 1 };
 
-    const playerVars = SessionManager.generatePlayerParams(videoId, session);
-    
-    return {
-      height: '500',
-      width: '100%',
-      playerVars: playerVars,
-      // Use nocookie domain for better privacy and tracking
-      host: 'https://www.youtube-nocookie.com'
+    const baseVars = {
+      autoplay: 1,
+      controls: 1,
+      showinfo: 1,
+      rel: 0, // Don't show related videos
+      modestbranding: 1,
+      iv_load_policy: 3, // Hide annotations
+      fs: 1, // Allow fullscreen
+      cc_load_policy: 0, // Don't show captions by default
+      disablekb: 0, // Enable keyboard controls
+      enablejsapi: 1, // Enable JS API
+      origin: window.location.origin,
+      playsinline: 1,
     };
+
+    // Add session-specific randomization
+    const sessionVars = {
+      // Random start time (0-2 seconds) to simulate natural clicking
+      start: Math.floor(Math.random() * 3),
+      // Use session quality preference
+      vq: sessionData.quality,
+      // Random widget referrer from session
+      widget_referrer: sessionData.referrer,
+      // Add timestamp to make each embed unique
+      t: Date.now(),
+      // Random player theme
+      theme: Math.random() > 0.5 ? 'dark' : 'light',
+      // Random color scheme
+      color: Math.random() > 0.5 ? 'red' : 'white',
+    };
+
+    return { ...baseVars, ...sessionVars };
   };
 
-  // Enhanced ready handler with realistic user simulation
+  const opts = {
+    height: '500',
+    width: '100%',
+    playerVars: generatePlayerVars(),
+    // Use youtube-nocookie.com for better privacy and unique sessions
+    host: 'https://www.youtube-nocookie.com',
+  };
+
+  // Enhanced onReady handler with session simulation
   const handleReady = (event) => {
-    playerRef.current = event.target;
+    const player = event.target;
+    playerRef.current = player;
     
-    if (session) {
-      // Simulate realistic user behavior with error handling
-      try {
-        SessionManager.simulateUserBehavior(event.target, session);
-      } catch (error) {
-        console.log('User behavior simulation failed:', error);
-      }
-      
-      // Set viewport and device info if possible
-      try {
-        // Simulate different device capabilities
-        const qualities = ['small', 'medium', 'large', 'hd720', 'hd1080'];
-        const deviceQuality = qualities[Math.floor(Math.random() * qualities.length)];
-        
-        setTimeout(() => {
-          try {
-            event.target.setPlaybackQuality(deviceQuality);
-          } catch (qualityError) {
-            console.log('Quality setting failed:', qualityError);
-          }
-        }, 500);
-        
-      } catch (error) {
-        console.log('Player setup failed:', error);
-      }
-    }
+    if (!sessionData) return;
 
-    if (onReady) {
-      try {
-        onReady(event);
-      } catch (error) {
-        console.log('onReady callback failed:', error);
-      }
-    }
-  };
-
-  // Enhanced end handler with session cleanup
-  const handleEnd = (event) => {
-    console.log('Video ended - Session:', session?.id);
-    
-    // Generate new session for next video to ensure fresh tracking
+    // Simulate human-like behavior after player loads
     setTimeout(() => {
-      const newSession = SessionManager.generateSession();
-      setSession(newSession);
-    }, 100);
-    
-    if (onEnd) {
-      onEnd(event);
-    }
-  };
+      // Random volume (20-100%)
+      const volume = Math.floor(Math.random() * 80) + 20;
+      player.setVolume(volume);
 
-  // Track play events
-  const handlePlay = (event) => {
-    if (session) {
-      console.log('Video playing - Session:', session.id, 'Device:', session.platform);
-      
-      // Simulate additional user engagement
-      setTimeout(() => {
-        try {
-          // Random interaction to simulate real user
-          if (Math.random() > 0.7) {
-            const currentTime = event.target.getCurrentTime();
-            const randomSeek = currentTime + (Math.random() * 5 - 2.5); // ±2.5 seconds
-            if (randomSeek > 0) {
-              event.target.seekTo(randomSeek, true);
-            }
-          }
-        } catch (e) {
-          console.log('User simulation failed:', e);
+      // Simulate device-specific quality selection
+      const qualities = player.getAvailableQualityLevels();
+      if (qualities.length > 0) {
+        const randomQuality = qualities[Math.floor(Math.random() * qualities.length)];
+        player.setPlaybackQuality(randomQuality);
+      }
+
+      // Start periodic behavior simulation
+      const behaviorInterval = setInterval(() => {
+        sessionManager.simulateViewingBehavior(sessionData.sessionId);
+        
+        // Update view duration
+        if (viewStartTime.current) {
+          const duration = (Date.now() - viewStartTime.current) / 1000;
+          sessionManager.updateViewDuration(sessionData.sessionId, duration);
         }
-      }, Math.random() * 10000 + 5000); // 5-15 seconds
+      }, 5000); // Every 5 seconds
+
+      // Clean up interval when video ends or changes
+      const cleanup = () => clearInterval(behaviorInterval);
+      player.addEventListener('onStateChange', (state) => {
+        if (state.data === 0) cleanup(); // Video ended
+      });
+
+    }, Math.random() * 3000 + 1000); // Random delay 1-4 seconds
+
+    // Call original onReady
+    if (onReady) {
+      onReady(event);
     }
   };
 
-  // Track state changes for analytics
+  // Enhanced onEnd handler
+  const handleEnd = (event) => {
+    if (sessionData && viewStartTime.current) {
+      const totalDuration = (Date.now() - viewStartTime.current) / 1000;
+      sessionManager.updateViewDuration(sessionData.sessionId, totalDuration);
+    }
+
+    // Simulate human delay before next video
+    setTimeout(() => {
+      if (onEnd) {
+        onEnd(event);
+      }
+    }, Math.random() * 2000 + 1000); // 1-3 second delay
+  };
+
+  // Enhanced state change handler for realistic engagement
   const handleStateChange = (event) => {
-    if (session) {
-      const states = {
-        '-1': 'unstarted',
-        '0': 'ended',
-        '1': 'playing',
-        '2': 'paused',
-        '3': 'buffering',
-        '5': 'cued'
-      };
-      
-      console.log('Player state:', states[event.data] || event.data, 'Session:', session.id);
+    const player = event.target;
+    const state = event.data;
+    
+    if (!sessionData) return;
+
+    // YouTube player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
+    switch (state) {
+      case 1: // Playing
+        // Simulate occasional user interactions during playback
+        if (Math.random() < 0.15) { // 15% chance
+          setTimeout(() => {
+            const duration = player.getDuration();
+            if (duration > 30) { // Only for videos longer than 30 seconds
+              // Simulate seeking behavior (skip to different parts)
+              const seekPositions = [
+                Math.random() * duration * 0.1, // Beginning
+                Math.random() * duration * 0.3 + duration * 0.2, // Early middle
+                Math.random() * duration * 0.3 + duration * 0.5, // Late middle
+                Math.random() * duration * 0.2 + duration * 0.7, // Near end
+              ];
+              
+              const randomSeek = seekPositions[Math.floor(Math.random() * seekPositions.length)];
+              player.seekTo(randomSeek, true);
+            }
+          }, Math.random() * 15000 + 5000); // 5-20 seconds after start
+        }
+        break;
+        
+      case 2: // Paused
+        // Simulate resuming after random pause
+        if (Math.random() < 0.7) { // 70% chance to resume
+          setTimeout(() => {
+            if (player.getPlayerState() === 2) { // Still paused
+              player.playVideo();
+            }
+          }, Math.random() * 10000 + 2000); // 2-12 seconds
+        }
+        break;
+        
+      default:
+        // Handle other states (unstarted, ended, buffering, cued)
+        break;
     }
   };
 
-  if (!session) {
+  // Handle player errors by creating new session
+  const handleError = (event) => {
+    console.log('Player error, creating new session:', event);
+    const newSession = sessionManager.createVideoSession(videoId);
+    setSessionData(newSession);
+    setPlayerKey(prev => prev + 1);
+  };
+
+  if (!sessionData) {
     return <div className="video-player-container">Loading player...</div>;
   }
 
   return (
-    <div className="video-player-container" data-session={session.id} data-device={session.deviceId}>
-      {/* Main YouTube Player */}
+    <div 
+      className="video-player-container" 
+      data-session={sessionData.sessionId}
+      data-fingerprint={JSON.stringify(sessionData.fingerprint)}
+    >
       <YouTube
-        key={`player_${videoId}_${playerKey}_${session.id}`}
+        key={`${videoId}_${playerKey}_${sessionData.sessionId}`}
         videoId={videoId}
-        opts={getPlayerOptions()}
-        onReady={handleReady}
+        opts={opts}
         onEnd={handleEnd}
-        onPlay={handlePlay}
-        onPause={(event) => console.log('Video paused - Session:', session.id)}
+        onReady={handleReady}
         onStateChange={handleStateChange}
-        onError={(event) => {
-          console.log('Player error:', event.data, 'Session:', session.id);
-          // Handle specific YouTube player errors gracefully
-          try {
-            const errorCodes = {
-              2: 'Invalid video ID',
-              5: 'HTML5 player error',
-              100: 'Video not found or private',
-              101: 'Video not allowed in embedded players',
-              150: 'Video not allowed in embedded players'
-            };
-            const errorMessage = errorCodes[event.data] || `Unknown error: ${event.data}`;
-            console.warn('YouTube Player Error:', errorMessage);
-          } catch (e) {
-            console.log('Error handling failed:', e);
-          }
-        }}
+        onError={handleError}
       />
       
-      {/* Additional tracking iframes to simulate multiple device views */}
-      {[1, 2].map(index => (
-        <iframe
-          key={`tracker_${session.id}_${index}`}
-          src={`https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&session=${session.id}_${index}&autoplay=0&controls=0&showinfo=0&modestbranding=1&rel=0`}
-          style={{ 
-            position: 'absolute', 
-            left: '-9999px', 
-            width: '1px', 
-            height: '1px',
-            opacity: 0,
-            pointerEvents: 'none'
-          }}
-          title={`Tracker ${index}`}
-          loading="lazy"
-        />
-      ))}
-      
-      {/* Session info for debugging */}
-      <div style={{ display: 'none' }} id={`session-${session.id}`}>
-        Session: {session.id} | Device: {session.platform} | UA: {session.userAgent.substring(0, 50)}...
+      {/* Hidden elements to simulate different device characteristics */}
+      <div style={{ display: 'none' }}>
+        <span data-ua={sessionData.userAgent}></span>
+        <span data-ref={sessionData.referrer}></span>
+        <span data-lang={sessionData.fingerprint.language}></span>
+        <span data-tz={sessionData.fingerprint.timezone}></span>
       </div>
     </div>
   );

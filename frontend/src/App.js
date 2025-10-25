@@ -5,8 +5,6 @@ import ApiKeyInput from './components/ApiKeyInput';
 import ChannelInput from './components/ChannelInput';
 import VideoList from './components/VideoList';
 import VideoPlayer from './components/VideoPlayer';
-import SessionManager from './utils/sessionManager';
-import FingerprintingManager from './utils/fingerprinting';
 
 function App() {
   const [apiKey, setApiKey] = useState('');
@@ -17,62 +15,6 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all'); // 'all', 'long', 'shorts'
-
-  // Initialize user agent rotation and device simulation on app start
-  useEffect(() => {
-    // Initialize comprehensive browser fingerprinting
-    const fingerprint = FingerprintingManager.initializeFingerprint();
-    
-    // Set up user agent rotation for the entire session
-    const userAgent = SessionManager.getRandomUserAgent();
-    
-    // Apply user agent to the document if possible
-    try {
-      // Note: This won't actually change the browser's user agent,
-      // but it helps with our session tracking
-      document.documentElement.setAttribute('data-user-agent', userAgent);
-      
-      // Set viewport meta tag based on simulated device
-      const viewport = SessionManager.getRandomViewport();
-      let viewportMeta = document.querySelector('meta[name="viewport"]');
-      if (!viewportMeta) {
-        viewportMeta = document.createElement('meta');
-        viewportMeta.name = 'viewport';
-        document.head.appendChild(viewportMeta);
-      }
-      viewportMeta.content = `width=${viewport.width}, height=${viewport.height}, initial-scale=1.0`;
-      
-      // Add device simulation attributes
-      document.body.setAttribute('data-device-width', viewport.width);
-      document.body.setAttribute('data-device-height', viewport.height);
-      document.body.setAttribute('data-session-ua', userAgent.substring(0, 50));
-      document.body.setAttribute('data-fingerprint-id', fingerprint.sessionId);
-      
-      // Add additional fingerprinting attributes
-      document.body.setAttribute('data-canvas-fp', fingerprint.canvas);
-      document.body.setAttribute('data-webgl-renderer', fingerprint.webgl.renderer.substring(0, 30));
-      document.body.setAttribute('data-audio-fp', fingerprint.audio.hash);
-      document.body.setAttribute('data-screen-res', `${fingerprint.screen.width}x${fingerprint.screen.height}`);
-      document.body.setAttribute('data-platform', fingerprint.features.platform);
-      document.body.setAttribute('data-timezone', fingerprint.locale.timezone);
-      
-      console.log('App initialized with comprehensive device simulation:', {
-        userAgent: userAgent.substring(0, 100) + '...',
-        viewport: viewport,
-        fingerprint: {
-          sessionId: fingerprint.sessionId,
-          canvas: fingerprint.canvas,
-          webgl: fingerprint.webgl.renderer.substring(0, 50) + '...',
-          screen: `${fingerprint.screen.width}x${fingerprint.screen.height}`,
-          platform: fingerprint.features.platform,
-          timezone: fingerprint.locale.timezone
-        }
-      });
-      
-    } catch (error) {
-      console.log('Device simulation setup failed:', error);
-    }
-  }, []);
 
   // Handle API key submission
   const handleApiKeySubmit = () => {
